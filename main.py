@@ -54,9 +54,7 @@ class StockBot:
     def getPercentChanges(self):
         length = 10
         for i, stock in enumerate(self.stockList):
-            bars = self.alpacaREST.get_barset(stock[0], 'minute', length)
-            self.stockList[i][1] = (bars[stock[0]][len(bars[stock[0]]) - 1].c - bars[stock[0]][0].o) / \
-                                   bars[stock[0]][0].o
+
 
 
 run = StockBot()
