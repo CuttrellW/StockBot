@@ -12,7 +12,6 @@ class StockBot:
         for stock in fleet:
             self.stockList.append([stock, 0])
 
-
     def main(self):
         # close all open orders
         openOrders = alpacaREST.list_orders(status="open")
