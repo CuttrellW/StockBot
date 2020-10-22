@@ -41,6 +41,8 @@ class StockBot:
         while True:
             account = alpacaREST.get_account()
             cash = account.buying_power
+            toSell = []
+            toBuy = []
 
             # check if market is closing soon
 
@@ -64,12 +66,29 @@ class StockBot:
             topMovers = self.getTopMovers()
 
             if prevTopMovers:
-                found = False
+                # find dropped members of top movers, and those whose percentage fell below zero
+                for i in 0, len(prevTopMovers) - 1:
+                    sell = False
+                    if prevTopMovers[i][1] <= 0:
+                        sell = True
+                    else:
+                        found = False
+                        for j in 0, len(topMovers) - 1:
+                            if prevTopMovers[i] == topMovers[j]:
+                                found = True
+                        if not found:
+                            sell = True
+                    if sell:
+                        toSell.append(prevTopMovers[i])
+                # find new members of Top Movers
                 for i in 0, len(topMovers) - 1:
-                    for j in 0, len(prevTopMovers):
+                    found = False
+                    for j in 0, len(prevTopMovers) - 1:
                         if topMovers[i] == prevTopMovers[j]:
                             found = True
                     if not found:
+                        toBuy.append(topMovers[i])
+
 
 
             # check to see if the top movers have changed
