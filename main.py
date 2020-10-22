@@ -40,7 +40,8 @@ class StockBot:
         prevTopMovers = []
         while True:
             account = alpacaREST.get_account()
-            cash = account.buying_power
+            cash = int(float(account.buying_power))
+            positions = alpacaREST.list_positions()
             toSell = []
             toBuy = []
 
@@ -54,26 +55,26 @@ class StockBot:
                 print("Market about to close. Selling all positions.")
                 for order in openOrders:
                     alpacaREST.cancel_order(order.id)
-                self.closePositions()
+                self.closePositions(positions)
                 time.sleep(310)
 
 
 
             # get the percent changes for each stock and designate top movers from the list
             self.getPercentChanges()
-            self.stockList.sort(key=lambda x: x[1])
+            self.stockList.sort(key=lambda x: x[1], reverse=True)
 
             topMovers = self.getTopMovers()
 
             if prevTopMovers:
                 # find dropped members of top movers, and those whose percentage fell below zero
-                for i in 0, len(prevTopMovers) - 1:
+                for i in range(len(prevTopMovers)):
                     sell = False
-                    if prevTopMovers[i][1] <= 0:
+                    if prevTopMovers[i][1] <= 0 and self.heldPosition(prevTopMovers[i][0]):
                         sell = True
                     else:
                         found = False
-                        for j in 0, len(topMovers) - 1:
+                        for j in range(len(topMovers)):
                             if prevTopMovers[i] == topMovers[j]:
                                 found = True
                         if not found:
@@ -81,25 +82,42 @@ class StockBot:
                     if sell:
                         toSell.append(prevTopMovers[i])
                 # find new members of Top Movers
-                for i in 0, len(topMovers) - 1:
+                for i in range(len(topMovers)):
                     found = False
-                    for j in 0, len(prevTopMovers) - 1:
+                    for j in range(len(prevTopMovers)):
                         if topMovers[i] == prevTopMovers[j]:
                             found = True
-                    if not found:
+                    if not found and topMovers[i][1] > 0:
+                        toBuy.append(topMovers[i])
+            else:
+                for i in range(len(topMovers)):
+                    if topMovers[i][1] > 0:
                         toBuy.append(topMovers[i])
 
+            # send sell orders
+            if toSell:
+                for stock in toSell:
+                    symbol = stock[0]
+                    qty = self.getQuantity(symbol)
+                    #print("Submitting order to sell " + str(qty) + " shares of " + str(symbol))
+                    self.submitOrder(symbol, qty, "sell")
+
+            if toBuy:
+                cashSplit = int(cash / len(toBuy) * 0.95)
+                for stock in toBuy:
+                    symbol = stock[0]
+                    quote = alpacaREST.get_last_quote(symbol)
+                    price = quote.askprice
+                    qty = int(cashSplit / price)
+                    #print("Submitting order to buy " + str(qty) + " shares of " + str(symbol))
+                    self.submitOrder(symbol, qty, "buy")
 
 
-            # check to see if the top movers have changed
 
-            # sell stocks if they drop out of top movers
-
-
-            # execute buy orders for new top movers
-            cashSplit = len(topMovers)
-
-
+            prevTopMovers = topMovers
+            print(self.stockList)
+            print(topMovers)
+            time.sleep(3)
     # check if market is closing soon
 
     # get percent changes
@@ -118,27 +136,44 @@ class StockBot:
     # designate top movers
     def getTopMovers(self):
         topMovers = []
-        length = int(len(self.stockList) / 4)
-        for i in 0, length:
-            topMovers.append(self.stockList[i])
+        length = int(len(self.stockList) / 3)
+        if length == 0:
+            topMovers.append(self.stockList[0])
+        else:
+            for i in range(length):
+                topMovers.append(self.stockList[i])
         return topMovers
     # submit order
     def submitOrder(self, stock, qty, side):
-        self.alpacaREST.submit_order(stock, qty, side, "market", "day")
+        try:
+            self.alpacaREST.submit_order(stock, qty, side, "market", "day")
+            print("Successful " + str(side) + " of " + str(qty) + " shares of " + str(stock))
+        except:
+            print("Failed to " + str(side) + " " + str(qty) + " shares of " + str(stock))
 
     # close all positions
-    def closePositions(self):
-        positions = alpacaREST.list_positions()
+    def closePositions(self, positions):
         for p in positions:
             if p.qty > 0:
                 try:
                     self.submitOrder(p.symbol, p.qty, "sell")
-                    print("Successfully sold " + p.qty + " shares of " + p.symbol)
                 except:
-                    print("Failed to close order on " + p.qty + " shares of " + p.symbol)
+                    print("ORDER NOT CLOSED")
 
 
+    def heldPosition(self, stock):
+        found = False
+        positions = alpacaREST.list_positions()
+        for p in positions:
+            if stock == p.symbol:
+                found = True
+        return found
 
+    def getQuantity(self, stock):
+        positions = alpacaREST.list_positions()
+        for p in positions:
+            if stock == p.symbol:
+                return int(p.qty)
 
 run = StockBot()
 run.main()
