@@ -26,7 +26,7 @@ is set to paper trading. In your paper trading overview find your api keys locat
 
 <p>Note: the current version of alpaca-trade-api will install an incompatable version of numPy. This can be resolved by installing and older version (1.18)</p>
 
-<h2>Using the program<h2>
+<h2>Using the program</h2>
 
 <p>In order to run this program, you must insert your Api Key Id and Secret Key into api.py</p>
 
